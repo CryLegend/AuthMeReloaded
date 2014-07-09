@@ -60,7 +60,7 @@ public final class Settings extends YamlConfiguration {
             usePurge, purgePlayerDat, purgeEssentialsFile, supportOldPassword, purgeLimitedCreative,
             purgeAntiXray, purgePermissions, enableProtection, enableAntiBot, recallEmail, useWelcomeMessage,
             broadcastWelcomeMessage, forceRegKick, forceRegLogin, checkVeryGames, delayJoinMessage,
-            noTeleport;
+            noTeleport, isMySQLSSHTunnel;
  
     public static String getNickRegex, getUnloggedinGroup, getMySQLHost, getMySQLPort, 
             getMySQLUsername, getMySQLPassword, getMySQLDatabase, getMySQLTablename, 
@@ -69,12 +69,14 @@ public final class Settings extends YamlConfiguration {
             getcUnrestrictedName, getRegisteredGroup, messagesLanguage, getMySQLlastlocX, getMySQLlastlocY, getMySQLlastlocZ,
             rakamakUsers, rakamakUsersIp, getmailAccount, getmailPassword, getmailSMTP, getMySQLColumnId, getmailSenderName, 
             getMailSubject, getMailText, getMySQLlastlocWorld, defaultWorld,
-            getPhpbbPrefix, getWordPressPrefix, getMySQLColumnLogged, spawnPriority, crazyloginFileName;
+            getPhpbbPrefix, getWordPressPrefix, getMySQLColumnLogged, spawnPriority, crazyloginFileName,
+            getMySQLSSHTunnelHost, getMySQLSSHTunnelUser, getMySQLSSHTunnelPassword, getMySQLSSHTunnelRemoteHost;
 
     public static int getWarnMessageInterval, getSessionTimeout, getRegistrationTimeout, getMaxNickLength,
             getMinNickLength, getPasswordMinLen, getMovementRadius, getmaxRegPerIp, getNonActivatedGroup,
             passwordMaxLength, getRecoveryPassLength, getMailPort, maxLoginTry, captchaLength, saltLength, getmaxRegPerEmail,
-            bCryptLog2Rounds, getPhpbbGroup, antiBotSensibility, antiBotDuration, delayRecall, getMaxLoginPerIp, getMaxJoinPerIp;
+            bCryptLog2Rounds, getPhpbbGroup, antiBotSensibility, antiBotDuration, delayRecall, getMaxLoginPerIp, getMaxJoinPerIp,
+            getMySQLSSHTunnelPort, getMySQLSSHTunnelRemotePort;
 
     protected static YamlConfiguration configFile;
 
@@ -126,6 +128,13 @@ public void loadConfigOptions() {
         getPasswordHash = getPasswordHash();
         getUnloggedinGroup = configFile.getString("settings.security.unLoggedinGroup","unLoggedInGroup");
         getDataSource = getDataSource();
+        isMySQLSSHTunnel = configFile.getBoolean("DataSource.mySQLSHHTunnel.enabled",false);
+        getMySQLSSHTunnelHost = configFile.getString("DataSource.mySQLSHHTunnel.host","example.com");
+        getMySQLSSHTunnelPort = configFile.getInt("DataSource.mySQLSHHTunnel.port",22);
+        getMySQLSSHTunnelUser = configFile.getString("DataSource.mySQLSHHTunnel.user","root");
+        getMySQLSSHTunnelPassword = configFile.getString("DataSource.mySQLSHHTunnel.password","example");
+        getMySQLSSHTunnelRemoteHost = configFile.getString("DataSource.mySQLSHHTunnel.remoteHost","example.com");
+        getMySQLSSHTunnelRemotePort = configFile.getInt("DataSource.mySQLSHHTunnel.remotePort",3306);
         isCachingEnabled = configFile.getBoolean("DataSource.caching",true);
         getMySQLHost = configFile.getString("DataSource.mySQLHost","127.0.0.1");
         getMySQLPort = configFile.getString("DataSource.mySQLPort","3306");

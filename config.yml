@@ -1,4 +1,20 @@
 DataSource:
+    # MySQL SSH Tunnel
+    mySQLSHHTunnel:
+        # Enabled? Default false
+        enabled: false
+        # SSH Host
+        host: example.com
+        # SSH Port
+        port: 22
+        # SSH User
+        user: root
+        # SSH Password
+        password: 'example'
+        # SSH Tunnel Remote host
+        remoteHost: example.com
+        # SSH Tunnel Remote port
+        remotePort: 3306
     # Column for storing or checking players nickname
     mySQLColumnName: username
     # Table of the database

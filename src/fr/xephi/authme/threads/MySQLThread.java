@@ -8,7 +8,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import com.mysql.jdbc.jdbc2.optional.MysqlConnectionPoolDataSource;
 
 import fr.xephi.authme.AuthMe;
@@ -24,7 +28,7 @@ import fr.xephi.authme.settings.Settings;
 public class MySQLThread extends Thread implements DataSource {
 
     private String host;
-    private String port;
+    private int port;
     private String username;
     private String password;
     private String database;
@@ -42,12 +46,19 @@ public class MySQLThread extends Thread implements DataSource {
     private String columnEmail;
     private String columnID;
     private String columnLogged;
+    private boolean sshTunnel;
+    private String sshHost;
+    private int sshPort;
+    private String sshUser;
+    private String sshPass;
+    private String sshRemoteHost;
+    private int sshRemotePort;
     private List<String> columnOthers;
     private MiniConnectionPoolManager conPool;
 
     public void run() {
         this.host = Settings.getMySQLHost;
-        this.port = Settings.getMySQLPort;
+        this.port = Integer.parseInt(Settings.getMySQLPort);
         this.username = Settings.getMySQLUsername;
         this.password = Settings.getMySQLPassword;
         this.database = Settings.getMySQLDatabase;
@@ -66,6 +77,14 @@ public class MySQLThread extends Thread implements DataSource {
         this.columnOthers = Settings.getMySQLOtherUsernameColumn;
         this.columnID = Settings.getMySQLColumnId;
         this.columnLogged = Settings.getMySQLColumnLogged;
+        this.sshTunnel = Settings.isMySQLSSHTunnel;
+        this.sshHost = Settings.getMySQLSSHTunnelHost;
+        this.sshPort = Settings.getMySQLSSHTunnelPort;
+        this.sshUser = Settings.getMySQLSSHTunnelUser;
+        this.sshPass = Settings.getMySQLSSHTunnelPassword;
+        this.sshRemoteHost = Settings.getMySQLSSHTunnelRemoteHost;
+        this.sshRemotePort = Settings.getMySQLSSHTunnelRemotePort;
+        
         try {
 			this.connect();
 			this.setup();
@@ -96,16 +115,38 @@ public class MySQLThread extends Thread implements DataSource {
             if (!Settings.isStopEnabled)
             	AuthMe.getInstance().getServer().getPluginManager().disablePlugin(AuthMe.getInstance());
             return;
+		} catch (JSchException e) {
+            ConsoleLogger.showError(e.getMessage());
+            if (Settings.isStopEnabled) {
+            	ConsoleLogger.showError("Can't use MySQL through SSH Tunnel... Please input correct SSH and MySQL informations ! SHUTDOWN...");
+            	AuthMe.getInstance().getServer().shutdown();
+            }
+            if (!Settings.isStopEnabled)
+            	AuthMe.getInstance().getServer().getPluginManager().disablePlugin(AuthMe.getInstance());
 		}
     }
 
-    private synchronized void connect() throws ClassNotFoundException, SQLException, TimeoutException {
+    private synchronized void connect() throws ClassNotFoundException, SQLException, TimeoutException, JSchException {
+    	if (sshTunnel) {
+    		final JSch jsch = new JSch();
+    		Session session = jsch.getSession(sshUser, sshHost, sshPort);
+    		session.setPassword(sshPass);
+
+    		final Properties config = new Properties();
+    		config.put("StrictHostKeyChecking", "no");
+    		session.setConfig(config);
+
+    		session.connect();
+    		port = session.setPortForwardingL(port, sshRemoteHost, sshRemotePort);
+            ConsoleLogger.info("SSH Tunnel ready (port " + port + ")");
+    	}
+    	
         Class.forName("com.mysql.jdbc.Driver");
         ConsoleLogger.info("MySQL driver loaded");
         MysqlConnectionPoolDataSource dataSource = new MysqlConnectionPoolDataSource();
         dataSource.setDatabaseName(database);
         dataSource.setServerName(host);
-        dataSource.setPort(Integer.parseInt(port));
+        dataSource.setPort(port);
         dataSource.setUser(username);
         dataSource.setPassword(password);
         conPool = new MiniConnectionPoolManager(dataSource, 10);
@@ -175,6 +216,7 @@ public class MySQLThread extends Thread implements DataSource {
             if (rs.next()) {
             	st.executeUpdate("ALTER TABLE " + tableName + " MODIFY " + lastlocX + " DOUBLE NOT NULL DEFAULT '0.0', MODIFY " + lastlocY + " DOUBLE NOT NULL DEFAULT '0.0', MODIFY " + lastlocZ + " DOUBLE NOT NULL DEFAULT '0.0';");
             }
+            ConsoleLogger.info("Setup done");
         } finally {
             close(rs);
             close(st);
@@ -905,7 +947,7 @@ public class MySQLThread extends Thread implements DataSource {
         MysqlConnectionPoolDataSource dataSource = new MysqlConnectionPoolDataSource();
         dataSource.setDatabaseName(database);
         dataSource.setServerName(host);
-        dataSource.setPort(Integer.parseInt(port));
+        dataSource.setPort(port);
         dataSource.setUser(username);
         dataSource.setPassword(password);
         conPool = new MiniConnectionPoolManager(dataSource, 10);

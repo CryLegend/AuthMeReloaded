@@ -1,5 +1,8 @@
 package fr.xephi.authme.datasource;
 
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import com.mysql.jdbc.jdbc2.optional.MysqlConnectionPoolDataSource;
 
 import fr.xephi.authme.AuthMe;
@@ -18,12 +21,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 
 public class MySQLDataSource implements DataSource {
 
     private String host;
-    private String port;
+    private int port;
     private String username;
     private String password;
     private String database;
@@ -41,12 +45,20 @@ public class MySQLDataSource implements DataSource {
     private String columnEmail;
     private String columnID;
     private String columnLogged;
+    private boolean sshTunnel;
+    private String sshHost;
+    private int sshPort;
+    private String sshUser;
+    private String sshPass;
+    private String sshRemoteHost;
+    private int sshRemotePort;
     private List<String> columnOthers;
     private MiniConnectionPoolManager conPool;
+	JSch jsch = null;
 
-    public MySQLDataSource() throws ClassNotFoundException, SQLException {
+    public MySQLDataSource() throws ClassNotFoundException, SQLException, JSchException {
         this.host = Settings.getMySQLHost;
-        this.port = Settings.getMySQLPort;
+        this.port = Integer.parseInt(Settings.getMySQLPort);
         this.username = Settings.getMySQLUsername;
         this.password = Settings.getMySQLPassword;
         this.database = Settings.getMySQLDatabase;
@@ -65,18 +77,39 @@ public class MySQLDataSource implements DataSource {
         this.columnOthers = Settings.getMySQLOtherUsernameColumn;
         this.columnID = Settings.getMySQLColumnId;
         this.columnLogged = Settings.getMySQLColumnLogged;
+        this.sshTunnel = Settings.isMySQLSSHTunnel;
+        this.sshHost = Settings.getMySQLSSHTunnelHost;
+        this.sshPort = Settings.getMySQLSSHTunnelPort;
+        this.sshUser = Settings.getMySQLSSHTunnelUser;
+        this.sshPass = Settings.getMySQLSSHTunnelPassword;
+        this.sshRemoteHost = Settings.getMySQLSSHTunnelRemoteHost;
+        this.sshRemotePort = Settings.getMySQLSSHTunnelRemotePort;
 
         connect();
         setup();
     }
 
-    private synchronized void connect() throws ClassNotFoundException, SQLException {
+    private synchronized void connect() throws ClassNotFoundException, SQLException, JSchException {
+    	if (sshTunnel) {
+    		jsch = new JSch();
+    		Session session = jsch.getSession(sshUser, sshHost, sshPort);
+    		session.setPassword(sshPass);
+
+    		Properties config = new Properties();
+    		config.put("StrictHostKeyChecking", "no");
+    		session.setConfig(config);
+
+    		session.connect();
+    		port = session.setPortForwardingL(port, sshRemoteHost, sshRemotePort);
+            ConsoleLogger.info("SSH Tunnel ready (port " + port + ")");
+    	}
+    	
         Class.forName("com.mysql.jdbc.Driver");
         ConsoleLogger.info("MySQL driver loaded");
         MysqlConnectionPoolDataSource dataSource = new MysqlConnectionPoolDataSource();
         dataSource.setDatabaseName(database);
         dataSource.setServerName(host);
-        dataSource.setPort(Integer.parseInt(port));
+        dataSource.setPort(port);
         dataSource.setUser(username);
         dataSource.setPassword(password);
         conPool = new MiniConnectionPoolManager(dataSource, 20);
@@ -876,7 +909,7 @@ public class MySQLDataSource implements DataSource {
         MysqlConnectionPoolDataSource dataSource = new MysqlConnectionPoolDataSource();
         dataSource.setDatabaseName(database);
         dataSource.setServerName(host);
-        dataSource.setPort(Integer.parseInt(port));
+        dataSource.setPort(port);
         dataSource.setUser(username);
         dataSource.setPassword(password);
         conPool = new MiniConnectionPoolManager(dataSource, 10);
